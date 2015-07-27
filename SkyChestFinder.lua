@@ -13,6 +13,23 @@ local movesDone = 0
 local skyChestFound = false
 local skyStoneFound = false
 
+local function placeFloor(slot)
+	slot = slot or 1
+	
+	if slot > 16 then
+		return true
+	end
+	
+	if turtle.getItemCount(slot) > 0 then
+		turtle.select(slot)
+		if not turtle.placeDown() then
+			placeFloor(slot + 1)
+		end
+	end
+	
+	return true
+end
+
 local function digMove(direction, attempts)
 	direction = direction or "forward"
 	attempts = attempts or 1
@@ -28,14 +45,14 @@ local function digMove(direction, attempts)
 			turtle.attack()
 			digMove("f", attempts)
 		end
-	else if direction == "d" direction == "down" then
+	elseif direction == "d" or direction == "down" then
 		turtle.digDown()
 		
 		if not turtle.down() then
 			turtle.attackDown()
 			digMove("d", attempts)
 		end
-	else if direction == "u" direction == "up" then
+	elseif direction == "u" or direction == "up" then
 		turtle.digUp()
 		
 		if not turtle.up() then
@@ -57,9 +74,9 @@ while not skyChestFound do
 		
 		turtle.dig()
 		skyChestFound = true
-	else if hasBlock and blockData.name == skyStoneId then
+	elseif hasBlock and blockData.name == skyStoneId and not skyStoneFound then
 		skyStoneFound = true
-	else if hasBlock and blockData.name == bedrockId  and not skyChestFound then
+	elseif hasBlock and blockData.name == bedrockId then
 		if skyStoneFound then
 			print("========================")
 			print("SKYSTONE HAS BEEN FOUND!")
@@ -69,13 +86,17 @@ while not skyChestFound do
 		skyChestFound = true
 	else
 		if digMove("down") then
-			moves = moves + 1
+			movesDone = movesDone + 1
 		end
 	end
 end
 
-while moves > 0 do
-	if digMove("up")
-		moves = moves -1
+while movesDone > 0 do
+	if digMove("up") then
+		movesDone = movesDone -1
+	end
+	
+	if movesDone < 5 then
+		placeFloor()
 	end
 end
