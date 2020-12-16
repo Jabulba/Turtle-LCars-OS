@@ -77,10 +77,11 @@ while not skyChestFound do
 	elseif hasBlock and blockData.name == skyStoneId and not skyStoneFound then
 		skyStoneFound = true
 	elseif hasBlock then
+	else
 		if skyStoneFound then
 			break
 		end
-	else
+		
 		if digMove("down") then
 			movesDone = movesDone + 1
 		end
