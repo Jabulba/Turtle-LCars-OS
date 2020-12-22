@@ -21,7 +21,6 @@ local function emptyInventory(directionFunc)
 
 	if hasEnderChest then
 		print("Clearing inventory...")
-		turtle.select(enderChestSlot)
 
 		while directionFunc["detect"]() do
 			local success, err = directionFunc["dig"]()
@@ -32,6 +31,7 @@ local function emptyInventory(directionFunc)
 			os.sleep(0.2)
 		end
 
+		turtle.select(enderChestSlot)
 		while not directionFunc["place"]() do
 			turtle.attackUp()
 			turtle.attack()
@@ -49,11 +49,13 @@ local function emptyInventory(directionFunc)
 		end
 
 		for i = 1, 16, 1 do
-			if i == enderChestSlot or i == bucketSlot then
+			turtle.select(i)
+			local itemData = turtle.getItemDetail(i)
+			if itemData and itemData.name == "minecraft:bucket" then
+				if itemData.count > 1 then
+					directionFunc["drop"](itemData.count - 1)
 				break
 			end
-
-			turtle.select(i)
 			directionFunc["drop"]()
 		end
 
