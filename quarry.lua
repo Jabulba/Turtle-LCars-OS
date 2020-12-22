@@ -8,6 +8,8 @@
 -- string[] ignoredBlocks
 -- integer  enderChestSlot
 -- boolean  hasEnderChest
+-- integer  bucketSlot
+-- boolean  hasBucket
 
 boolToInt = { [true] = 1, [false] = 0 }
 turtleFuncMapping = {
@@ -56,8 +58,9 @@ local function emptyInventory(directionFunc)
 					directionFunc["drop"](itemData.count - 1)
 					break
 				end
+			else
+				directionFunc["drop"]()
 			end
-			directionFunc["drop"]()
 		end
 
 		turtle.select(enderChestSlot)
