@@ -54,7 +54,8 @@ local function emptyInventory(directionFunc)
 			if itemData and itemData.name == "minecraft:bucket" then
 				if itemData.count > 1 then
 					directionFunc["drop"](itemData.count - 1)
-				break
+					break
+				end
 			end
 			directionFunc["drop"]()
 		end
