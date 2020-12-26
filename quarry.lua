@@ -11,6 +11,7 @@
 -- integer  bucketSlot
 -- boolean  hasBucket
 
+fuelLimit = turtle.getFuelLimit()
 boolToInt = { [true] = 1, [false] = 0 }
 turtleFuncMapping = {
 	["up"] =		{ ["detect"] = turtle.detectUp,		["dig"] = turtle.digUp,		["place"] = turtle.placeUp,		["inspect"] = turtle.inspectUp,		["drop"] = turtle.dropUp,	["suck"] = turtle.suckUp },
@@ -51,14 +52,9 @@ local function emptyInventory(directionFunc)
 		end
 
 		for i = 1, 16, 1 do
-			turtle.select(i)
 			local itemData = turtle.getItemDetail(i)
-			if itemData and itemData.name == "minecraft:bucket" then
-				if itemData.count > 1 then
-					directionFunc["drop"](itemData.count - 1)
-					break
-				end
-			else
+			if itemData ~= nil and i ~= bucketSlot then
+				turtle.select(i)
 				directionFunc["drop"]()
 			end
 		end
@@ -99,8 +95,16 @@ function getFuelLevel()
 	return fuelLevel
 end
 
+function needsFuel()
+	return turtle.getFuelLevel() ~= "unlimited"
+end
+
 function startupRefuel()
 	refuelSlot = 2
+	if not needsFuel() then
+		return
+	end
+
 	local fuelEstimate = width * length * (height + curHeight)
 	if not hasEnderChest then
 		fuelEstimate = math.floor(fuelEstimate * 1.3)
@@ -176,6 +180,7 @@ function loadIgnoredBlocks()
 		ignoredBlocksFile.writeLine("byg:rocky_stone")
 		ignoredBlocksFile.writeLine("wild_explorer:blunite")
 		ignoredBlocksFile.writeLine("wild_explorer:carbonite")
+		ignoredBlocksFile.writeLine("terrestria:basalt_dirt")
 
 		ignoredBlocksFile:close()
 	end
@@ -238,6 +243,12 @@ end
 
 function checkForBucket()
 	hasBucket = false
+	bucketSlot = -1
+
+	if not needsFuel() then
+		return
+	end
+
 	local unlocked = false
 	repeat
 		term.clear()
@@ -247,6 +258,12 @@ function checkForBucket()
 				if itemData.name == "minecraft:bucket" then
 					bucketSlot = slot
 					hasBucket = true
+					break
+				elseif itemData.name == "minecraft:lava_bucket" then
+					bucketSlot = slot
+					hasBucket = true
+					turtle.select(bucketSlot)
+					turtle.refuel()
 					break
 				end
 			end
@@ -374,6 +391,7 @@ function moveDown()
 end
 
 function moveForward(increaseWidth)
+	checkLava(turtleFuncMapping["forward"])
 	action = "moveForward"
 	updateRunData()
 	while not turtle.forward() do
@@ -472,6 +490,10 @@ function checkChest(directionFunc)
 end
 
 function checkLava(directionFunc)
+	if not hasBucket or not needsFuel() or getFuelLevel() + 1000 >= fuelLimit then
+		return
+	end
+
 	local success, blockData = directionFunc["inspect"]()
 	if success and blockData and blockData.name == "minecraft:lava" then
 		turtle.select(bucketSlot)
@@ -505,8 +527,8 @@ function dig(directionFunc, force)
 end
 
 function excavate(forceUp, forceForward, forceDown)
-	dig(turtleFuncMapping["up"], forceUp)
 	dig(turtleFuncMapping["forward"], forceForward)
+	dig(turtleFuncMapping["up"], forceUp)
 	dig(turtleFuncMapping["down"], forceDown)
 end
 
