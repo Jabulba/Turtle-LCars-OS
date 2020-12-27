@@ -23,8 +23,6 @@ local function emptyInventory(directionFunc)
 	directionFunc = directionFunc or turtleFuncMapping["forward"]
 
 	if hasEnderChest then
-		print("Clearing inventory...")
-
 		while directionFunc["detect"]() do
 			local success, err = directionFunc["dig"]()
 			if not success and err == "Unbreakable block detected" then
@@ -71,7 +69,6 @@ local function emptyInventory(directionFunc)
 				end
 			end
 		until success
-		io.write(" Inventory cleared!\n")
 	end
 end
 
@@ -155,8 +152,11 @@ function loadIgnoredBlocks()
 		ignoredBlocksFile.writeLine("minecraft:cobblestone")
 		ignoredBlocksFile.writeLine("minecraft:diorite")
 		ignoredBlocksFile.writeLine("minecraft:dirt")
+		ignoredBlocksFile.writeLine("minecraft:coarse_dirt")
 		ignoredBlocksFile.writeLine("minecraft:granite")
 		ignoredBlocksFile.writeLine("minecraft:grass")
+		ignoredBlocksFile.writeLine("minecraft:grass_block")
+		ignoredBlocksFile.writeLine("minecraft:grass_path")
 		ignoredBlocksFile.writeLine("minecraft:gravel")
 		ignoredBlocksFile.writeLine("minecraft:ice")
 		ignoredBlocksFile.writeLine("minecraft:packed_ice")
@@ -166,21 +166,42 @@ function loadIgnoredBlocks()
 		ignoredBlocksFile.writeLine("minecraft:polished_blackstone_bricks")
 		ignoredBlocksFile.writeLine("minecraft:sand")
 		ignoredBlocksFile.writeLine("minecraft:sandstone")
+		ignoredBlocksFile.writeLine("minecraft:seagrass")
 		ignoredBlocksFile.writeLine("minecraft:snow")
 		ignoredBlocksFile.writeLine("minecraft:snow_layer")
 		ignoredBlocksFile.writeLine("minecraft:stone")
+		ignoredBlocksFile.writeLine("minecraft:tall_grass")
 		ignoredBlocksFile.writeLine("minecraft:torch")
+		ignoredBlocksFile.writeLine("betterend:bluestone")
 		ignoredBlocksFile.writeLine("blockus:bluestone")
 		ignoredBlocksFile.writeLine("blockus:limestone")
 		ignoredBlocksFile.writeLine("blockus:marble")
+		ignoredBlocksFile.writeLine("byg:beach_grass")
 		ignoredBlocksFile.writeLine("byg:brimstone")
+		ignoredBlocksFile.writeLine("byg:ether_grass")
 		ignoredBlocksFile.writeLine("byg:nyliumd_soul_soil")
 		ignoredBlocksFile.writeLine("byg:meadow_dirt")
 		ignoredBlocksFile.writeLine("byg:meadow_grass_block")
+		ignoredBlocksFile.writeLine("byg:prairie_grass")
 		ignoredBlocksFile.writeLine("byg:rocky_stone")
+		ignoredBlocksFile.writeLine("byg:scorched_grass")
+		ignoredBlocksFile.writeLine("byg:short_beach_grass")
+		ignoredBlocksFile.writeLine("byg:short_grass")
+		ignoredBlocksFile.writeLine("byg:tall_prairie_grass")
+		ignoredBlocksFile.writeLine("byg:weed_grass")
+		ignoredBlocksFile.writeLine("byg:whaling_grass")
+		ignoredBlocksFile.writeLine("byg:wilted_grass")
+		ignoredBlocksFile.writeLine("byg:winter_grass")
 		ignoredBlocksFile.writeLine("wild_explorer:blunite")
 		ignoredBlocksFile.writeLine("wild_explorer:carbonite")
+		ignoredBlocksFile.writeLine("terrestria:andisol_grass_path")
+		ignoredBlocksFile.writeLine("terrestria:basalt")
+		ignoredBlocksFile.writeLine("terrestria:basalt_cobblestone")
 		ignoredBlocksFile.writeLine("terrestria:basalt_dirt")
+		ignoredBlocksFile.writeLine("terrestria:basalt_grass_block")
+		ignoredBlocksFile.writeLine("terrestria:basalt_podzol")
+		ignoredBlocksFile.writeLine("terrestria:basalt_sand")
+		ignoredBlocksFile.writeLine("terrestria:dead_grass")
 
 		ignoredBlocksFile:close()
 	end
@@ -586,9 +607,30 @@ function returnToStart()
 	end
 
 	if widthInverted then
-		widthTurn()
+		if lengthInverted then
+			widthTurn()
+		end
 		for i = curWidth, width - 1, 1 do
 			moveForward()
+		end
+	end
+
+	local success, _ = turtleFuncMapping["down"]["inspect"]()
+	if not success then
+		local placeBlock = false
+		local placeSlot
+		for i = 1, 16, 1 do
+			local slotData = turtle.getItemDetail(i)
+			if slotData and ignoredBlocks[slotData.name] then
+				placeBlock = true
+				placeSlot = i
+				break
+			end
+		end
+
+		if placeBlock then
+			turtle.select(placeSlot)
+			turtle.placeDown()
 		end
 	end
 end
