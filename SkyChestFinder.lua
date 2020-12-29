@@ -52,6 +52,8 @@ local function digMove(direction, attempts)
 			turtle.attackDown()
 			digMove("d", attempts)
 		end
+
+		movesDone = movesDone + 1
 	elseif direction == "u" or direction == "up" then
 		turtle.digUp()
 
@@ -59,11 +61,14 @@ local function digMove(direction, attempts)
 			turtle.attackUp()
 			digMove("u", attempts)
 		end
+
+		movesDone = movesDone - 1
 	end
 
 	return true
 end
 
+miss = 0
 while not skyChestFound do
 	local hasBlock, blockData = turtle.inspectDown()
 
@@ -76,22 +81,19 @@ while not skyChestFound do
 		skyChestFound = true
 	elseif hasBlock and blockData.name == skyStoneId and not skyStoneFound then
 		skyStoneFound = true
-	elseif hasBlock then
+		miss = 0
 	else
-		if skyStoneFound then
+		if skyStoneFound and miss > 4 or miss > 20 then
 			break
 		end
-		
-		if digMove("down") then
-			movesDone = movesDone + 1
-		end
+		miss = miss + 1
+
+		digMove("down")
 	end
 end
 
 while movesDone > 0 do
-	if digMove("up") then
-		movesDone = movesDone -1
-	end
+	digMove("up")
 
 	if movesDone < 5 then
 		placeFloor()
