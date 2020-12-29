@@ -34,10 +34,6 @@ local function digMove(direction, attempts)
 	direction = direction or "forward"
 	attempts = attempts or 1
 
---	if attempts > 30 then
---		return false
---	end
-
 	if direction == "f" or direction == "forward" then
 		turtle.dig()
 
@@ -80,10 +76,14 @@ while not skyChestFound do
 		turtle.dig()
 		skyChestFound = true
 	elseif hasBlock and blockData.name == skyStoneId and not skyStoneFound then
+		print("Sky Stone!")
 		skyStoneFound = true
 		miss = 0
+		
+		digMove("down")
 	else
-		if skyStoneFound and miss > 4 or miss > 20 then
+		if skyStoneFound and miss > 4 then
+			print("To many misses, returning!")
 			break
 		end
 		miss = miss + 1
