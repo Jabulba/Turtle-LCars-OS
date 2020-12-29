@@ -219,6 +219,7 @@ function loadEnderChestsList()
 		local enderChestsFile = fs.open("quarry.enderchests", "w")
 
 		enderChestsFile.writeLine("kibe:entangled_chest")
+		enderChestsFile.writeLine("enderstorage:ender_storage")
 
 		enderChestsFile:close()
 	end
