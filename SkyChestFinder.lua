@@ -34,14 +34,12 @@ local function digMove(direction, attempts)
 	direction = direction or "forward"
 	attempts = attempts or 1
 
-	if direction == "f" or direction == "forward" then
-		turtle.dig()
-
-		if not turtle.forward() then
-			turtle.attack()
-			digMove("f", attempts)
+	if direction == "d" or direction == "down" then
+		local hasBlock, blockData = turtle.inspectDown()
+		if hasBlock and blockData.name == bedrockId then
+			skyChestFound = true
+			return
 		end
-	elseif direction == "d" or direction == "down" then
 		turtle.digDown()
 
 		if not turtle.down() then
