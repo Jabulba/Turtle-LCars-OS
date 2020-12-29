@@ -67,15 +67,23 @@ end
 miss = 0
 while not skyChestFound do
 	local hasBlock, blockData = turtle.inspectDown()
+	local hasBlockInFront, frontBlockData = turtle.inspect()
 
 	if hasBlock and blockData.name == skyChestId then
 		while turtle.suckDown() do
 			print("Picking item from sky chest")
 		end
 
+		turtle.digDown()
+		skyChestFound = true
+	elseif hasBlockInFront and frontBlockData.name == skyChestId then
+		while turtle.suck() do
+			print("Picking item from sky chest")
+		end
+
 		turtle.dig()
 		skyChestFound = true
-	elseif hasBlock and blockData.name == skyStoneId and not skyStoneFound then
+	elseif hasBlock and blockData.name == skyStoneId or hasBlockInFront and frontBlockData.name == skyStoneId then
 		print("Sky Stone!")
 		skyStoneFound = true
 		miss = 0
