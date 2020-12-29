@@ -81,11 +81,18 @@ while not skyChestFound do
 
 		turtle.dig()
 		skyChestFound = true
-	elseif hasBlock and blockData.name == skyStoneId or hasBlockInFront and frontBlockData.name == skyStoneId then
+	elseif hasBlock and blockData.name == skyStoneId then
 		print("Sky Stone!")
 		skyStoneFound = true
 		miss = 0
 		
+		digMove("down")
+	elseif hasBlockInFront and frontBlockData.name == skyStoneId then
+		print("Sky Stone!")
+		skyStoneFound = true
+		miss = 0
+		
+		turtle.dig()
 		digMove("down")
 	else
 		if skyStoneFound and miss > 4 then
