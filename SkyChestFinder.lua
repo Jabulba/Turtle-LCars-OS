@@ -34,9 +34,9 @@ local function digMove(direction, attempts)
 	direction = direction or "forward"
 	attempts = attempts or 1
 
-	if attempts > 30 then
-		return false
-	end
+--	if attempts > 30 then
+--		return false
+--	end
 
 	if direction == "f" or direction == "forward" then
 		turtle.dig()
