@@ -4,23 +4,24 @@
 -- integer  width
 -- integer  length
 -- integer  height
--- integer  refuelSlot
 -- string[] ignoredBlocks
 -- integer  enderChestSlot
 -- boolean  hasEnderChest
 -- integer  bucketSlot
 -- boolean  hasBucket
 
-fuelLimit = turtle.getFuelLimit()
+os.loadAPI("log.lua")
+os.loadAPI("fuel.lua")
+
 boolToInt = { [true] = 1, [false] = 0 }
-turtleFuncMapping = {
-	["up"] =		{ ["detect"] = turtle.detectUp,		["dig"] = turtle.digUp,		["place"] = turtle.placeUp,		["inspect"] = turtle.inspectUp,		["drop"] = turtle.dropUp,	["suck"] = turtle.suckUp },
-	["down"] =		{ ["detect"] = turtle.detectDown,	["dig"] = turtle.digDown,	["place"] = turtle.placeDown,	["inspect"] = turtle.inspectDown,	["drop"] = turtle.dropDown,	["suck"] = turtle.suckDown },
-	["forward"] =	{ ["detect"] = turtle.detect,		["dig"] = turtle.dig,		["place"] = turtle.place,		["inspect"] = turtle.inspect,		["drop"] = turtle.drop,		["suck"] = turtle.suck }
+directionMapping = {
+	["up"] = { ["detect"] = turtle.detectUp, ["dig"] = turtle.digUp, ["place"] = turtle.placeUp, ["inspect"] = turtle.inspectUp, ["drop"] = turtle.dropUp, ["suck"] = turtle.suckUp },
+	["down"] = { ["detect"] = turtle.detectDown, ["dig"] = turtle.digDown, ["place"] = turtle.placeDown, ["inspect"] = turtle.inspectDown, ["drop"] = turtle.dropDown, ["suck"] = turtle.suckDown },
+	["forward"] = { ["detect"] = turtle.detect, ["dig"] = turtle.dig, ["place"] = turtle.place, ["inspect"] = turtle.inspect, ["drop"] = turtle.drop, ["suck"] = turtle.suck }
 }
 
 local function emptyInventory(directionFunc)
-	directionFunc = directionFunc or turtleFuncMapping["forward"]
+	directionFunc = directionFunc or directionMapping["forward"]
 
 	if hasEnderChest then
 		while directionFunc["detect"]() do
@@ -51,7 +52,7 @@ local function emptyInventory(directionFunc)
 
 		for i = 1, 16, 1 do
 			local itemData = turtle.getItemDetail(i)
-			if itemData ~= nil and i ~= bucketSlot then
+			if itemData ~= nil and i ~= fuel.bucketSlot then
 				turtle.select(i)
 				directionFunc["drop"]()
 			end
@@ -83,66 +84,12 @@ local function checkInventory(directionFunc)
 	end
 end
 
-function getFuelLevel()
-	local fuelLevel = turtle.getFuelLevel()
-	if fuelLevel == "unlimited" then -- No fuel required
-		return math.huge
-	end
-
-	return fuelLevel
-end
-
-function needsFuel()
-	return turtle.getFuelLevel() ~= "unlimited"
-end
-
-function startupRefuel()
-	refuelSlot = 2
-	if not needsFuel() then
-		return
-	end
-
-	local fuelEstimate = width * length * (height + curHeight)
-	if not hasEnderChest then
-		fuelEstimate = math.floor(fuelEstimate * 1.3)
-	end
-
-	local unlocked = false
-	repeat
-		local fuelLevel = getFuelLevel()
-		if fuelLevel < fuelEstimate then
-			term.clear()
-			io.write("Fuel level might not be enougth to complete the run!\n")
-			io.write("Current: " .. fuelLevel .. " Required Estimate: " .. fuelEstimate .. "\n")
-			io.write("Missing: " .. (fuelEstimate - fuelLevel) .. "\n\n")
-
-			turtle.select(refuelSlot)
-			if not turtle.refuel(0) then
-				io.write("Place fuel in slot " .. refuelSlot .. " or press [ENTER] to continue...\n")
-				repeat
-					local event, param1 = os.pullEvent()
-					if event == "key" and param1 == keys.enter then
-						unlocked = true
-						break
-					elseif event == "turtle_inventory" then
-						break
-					end
-				until false
-			else
-				turtle.refuel()
-			end
-		else
-			unlocked = true
-		end
-	until unlocked
-
-	return true
-end
-
 function loadIgnoredBlocks()
 	ignoredBlocks = {}
+	log.info("Loading ignored blocks IDs")
 	local ignoredBlocksFileName = "quarry.ignoredblocks"
 	if not fs.exists(ignoredBlocksFileName) then
+		log.info("quarry.ignoredblocks not found, creating a new one with default IDs. You can add more IDs to this file, one ID per line!")
 		local ignoredBlocksFile = fs.open(ignoredBlocksFileName, "w")
 
 		ignoredBlocksFile.writeLine("minecraft:air")
@@ -208,14 +155,18 @@ function loadIgnoredBlocks()
 
 	for line in io.lines(ignoredBlocksFileName) do
 		ignoredBlocks[line] = true
+		log.trace("Loaded ignored block with ID: " .. line)
 	end
 
+	log.info("Finished loading ignored blocks IDs")
 	return ignoredBlocks
 end
 
 function loadEnderChestsList()
+	log.info("Loading Ender Chest IDs")
 	local enderChests = {}
 	if not fs.exists("quarry.enderchests") then
+		log.info("quarry.enderchests not found, creating a new one with default IDs. You can add more IDs to this file, one ID per line!")
 		local enderChestsFile = fs.open("quarry.enderchests", "w")
 
 		enderChestsFile.writeLine("kibe:entangled_chest")
@@ -225,6 +176,26 @@ function loadEnderChestsList()
 	end
 
 	for line in io.lines("quarry.enderchests") do
+		enderChests[line] = true
+		log.trace("Loaded compatible Ender Chest with ID: " .. line)
+	end
+
+	log.info("Finished loading Ender Chest IDs")
+	return enderChests
+end
+
+function loadEnderTanksList()
+	local enderChests = {}
+	if not fs.exists("quarry.tanks") then
+		local enderChestsFile = fs.open("quarry.tanks", "w")
+
+		enderChestsFile.writeLine("kibe:entangled_tank")
+		enderChestsFile.writeLine("enderstorage:ender_tank")
+
+		enderChestsFile:close()
+	end
+
+	for line in io.lines("quarry.tanks") do
 		enderChests[line] = true
 	end
 
@@ -242,73 +213,28 @@ function requestValidInput(val, name)
 end
 
 function checkForEnderChest()
-	term.clear()
 	hasEnderChest = false
 	local enderChestList = loadEnderChestsList()
+	log.info("Searching inventory for compatible Ender Chests")
 	for slot = 1, 16, 1 do
+		log.trace("Searching slot " .. slot)
 		local itemData = turtle.getItemDetail(slot)
 		if itemData then
+			log.trace("Slot " .. slot .. " has item: " .. itemData.name)
 			if enderChestList[itemData.name] then
+				log.info("Ender Chest found in slot " .. slot)
 				enderChestSlot = slot
 				hasEnderChest = true
 				break
 			end
 		end
 	end
+	log.trace("Finished searching for Ender Chest")
 
 	if not hasEnderChest then
+		log.error("No Ender Chest found")
 		error("No EnderChest found.")
 	end
-
-	return true
-end
-
-function checkForBucket()
-	hasBucket = false
-	bucketSlot = -1
-
-	if not needsFuel() then
-		return
-	end
-
-	local unlocked = false
-	repeat
-		term.clear()
-		for slot = 1, 16, 1 do
-			local itemData = turtle.getItemDetail(slot)
-			if itemData then
-				if itemData.name == "minecraft:bucket" then
-					bucketSlot = slot
-					hasBucket = true
-					break
-				elseif itemData.name == "minecraft:lava_bucket" then
-					bucketSlot = slot
-					hasBucket = true
-					turtle.select(bucketSlot)
-					turtle.refuel()
-					break
-				end
-			end
-		end
-
-		if hasBucket then
-			print("Using bucket from slot " .. enderChestSlot .. " to refuel with lava!")
-			break
-		else
-			print("Please give me a bucket so I can refuel using lava found along the way!")
-			print("or press [ENTER] to disable refueling")
-
-			repeat
-				local event, param1 = os.pullEvent()
-				if event == "key" and param1 == keys.enter then
-					unlocked = true
-					break
-				elseif event == "turtle_inventory" then
-					break
-				end
-			until false
-		end
-	until unlocked
 
 	return true
 end
@@ -377,15 +303,15 @@ function moveDown()
 		return
 	end
 
-	dig(turtleFuncMapping["down"], true)
+	dig(directionMapping["down"], true)
 	action = "moveDown"
 	updateRunData()
-	local inspected, blockData = turtleFuncMapping["down"]["inspect"]()
+	local inspected, blockData = directionMapping["down"]["inspect"]()
 	if inspected and blockData and blockData.name == "minecraft:bedrock" then
 		height = curHeight
 	else
 		while not turtle.down() do
-			dig(turtleFuncMapping["down"], true)
+			dig(directionMapping["down"], true)
 			turtle.attackDown()
 		end
 		curHeight = curHeight + 1
@@ -413,11 +339,11 @@ function moveDown()
 end
 
 function moveForward(increaseWidth)
-	checkLava(turtleFuncMapping["forward"])
+	checkLava(directionMapping["forward"])
 	action = "moveForward"
 	updateRunData()
 	while not turtle.forward() do
-		dig(turtleFuncMapping["forward"], true)
+		dig(directionMapping["forward"], true)
 		turtle.attack()
 	end
 	action = "idle"
@@ -433,11 +359,11 @@ function moveUp()
 		return
 	end
 
-	dig(turtleFuncMapping["up"], true)
+	dig(directionMapping["up"], true)
 	action = "moveUp"
 	updateRunData()
 	while not turtle.up() do
-		dig(turtleFuncMapping["up"], true)
+		dig(directionMapping["up"], true)
 		turtle.attackUp()
 	end
 	action = "idle"
@@ -512,13 +438,13 @@ function checkChest(directionFunc)
 end
 
 function checkLava(directionFunc)
-	if not hasBucket or not needsFuel() or getFuelLevel() + 1000 >= fuelLimit then
+	if not fuel.hasBucket or not fuel.fuelRequired or fuel.getFuelLevel() + 1000 >= fuelLimit then
 		return
 	end
 
 	local success, blockData = directionFunc["inspect"]()
 	if success and blockData and blockData.name == "minecraft:lava" then
-		turtle.select(bucketSlot)
+		turtle.select(fuel.bucketSlot)
 		directionFunc["place"]()
 		if turtle.refuel() == false then
 			directionFunc["place"]()
@@ -549,9 +475,9 @@ function dig(directionFunc, force)
 end
 
 function excavate(forceUp, forceForward, forceDown)
-	dig(turtleFuncMapping["forward"], forceForward)
-	dig(turtleFuncMapping["up"], forceUp)
-	dig(turtleFuncMapping["down"], forceDown)
+	dig(directionMapping["forward"], forceForward)
+	dig(directionMapping["up"], forceUp)
+	dig(directionMapping["down"], forceDown)
 end
 
 function quarry()
@@ -588,7 +514,7 @@ function quarry()
 			updateRunData()
 		end
 
-		dig(turtleFuncMapping["down"], false)
+		dig(directionMapping["down"], false)
 		widthTurn()
 		curWidth = 1
 		widthInverted = not widthInverted
@@ -616,7 +542,7 @@ function returnToStart()
 		end
 	end
 
-	local success, _ = turtleFuncMapping["down"]["inspect"]()
+	local success, _ = directionMapping["down"]["inspect"]()
 	if not success then
 		local placeBlock = false
 		local placeSlot
@@ -636,12 +562,28 @@ function returnToStart()
 	end
 end
 
+function startup()
+	log.trace("Startup with args: " .. table.concat(args, '; '))
+
+	checkForEnderChest()
+	fuel.checkForBucket()
+	loadIgnoredBlocks()
+	loadPerimeter(args)
+
+
+	local fuelEstimate = width * length * 60
+	if not hasEnderChest then
+		-- Some fuel will be used when returning itens to the surface!
+		fuelEstimate = math.floor(fuelEstimate * 1.1)
+	end
+	fuel.refuelWizard(fuelEstimate)
+	quarry()
+	returnToStart()
+	emptyInventory(directionMapping["up"])
+end
+
+log.setLevel(log.LogLevel.TRACE)
+log.setLevel(log.LogLevel.INFO)
+
 args = { ... }
-checkForEnderChest()
-checkForBucket()
-loadIgnoredBlocks()
-loadPerimeter(args)
-startupRefuel()
-quarry()
-returnToStart()
-emptyInventory(turtleFuncMapping["up"])
+startup()
