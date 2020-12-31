@@ -2,6 +2,8 @@ os.loadAPI("log.lua")
 
 fuelLimit = turtle.getFuelLimit()
 fuelRequired = turtle.getFuelLevel() ~= "unlimited"
+hasBucket = false
+bucketSlot = -1
 
 function getFuelLevel()
 	local fuelLevel = turtle.getFuelLevel()
@@ -13,9 +15,6 @@ function getFuelLevel()
 end
 
 function checkForBucket()
-	hasBucket = false
-	bucketSlot = -1
-
 	if not fuelRequired then
 		log.info("Skipping bucket detection, turtle requires no fuel")
 		return
