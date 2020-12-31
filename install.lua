@@ -30,4 +30,4 @@ download("SkyChest", "skychest.lua", "https://raw.githubusercontent.com/Jabulba/
 download("Quarry", "q.lua", "https://raw.githubusercontent.com/Jabulba/Turtle-LCars-OS/master/quarry.lua")
 download("Logger API", "log.lua", "https://raw.githubusercontent.com/Jabulba/Turtle-LCars-OS/master/log.lua")
 download("Fuel API", "fuel.lua", "https://raw.githubusercontent.com/Jabulba/Turtle-LCars-OS/master/fuel.lua")
-download("Refuel Wizard", "refuelwizard.lua", "https://raw.githubusercontent.com/Jabulba/Turtle-LCars-OS/master/refuelwizard.lua")
+download("Refuel Wizard", "rw.lua", "https://raw.githubusercontent.com/Jabulba/Turtle-LCars-OS/master/refuelwizard.lua")
