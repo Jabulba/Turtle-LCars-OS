@@ -1,9 +1,25 @@
 os.loadAPI("log.lua")
 
-fuelLimit = turtle.getFuelLimit()
-fuelRequired = turtle.getFuelLevel() ~= "unlimited"
-hasBucket = false
-bucketSlot = -1
+local fuelLimit = turtle.getFuelLimit()
+local fuelRequired = turtle.getFuelLevel() ~= "unlimited"
+local hasBucket = false
+local bucketSlot = -1
+
+function getFuelLimit()
+	return fuelLimit
+end
+
+function isFuelRequired()
+	return fuelRequired
+end
+
+function isBucketPresent()
+	return hasBucket
+end
+
+function getBucketSlot()
+	return bucketSlot
+end
 
 function getFuelLevel()
 	local fuelLevel = turtle.getFuelLevel()
@@ -12,6 +28,25 @@ function getFuelLevel()
 	end
 
 	return fuelLevel
+end
+
+
+function bucketRefuel(directionFunc)
+	if not hasBucket or not fuelRequired or getFuelLevel() + 1000 >= fuelLimit then
+		log.trace("Skipping bucket refuelling, fuel level is high enougth")
+		return
+	end
+
+	local success, blockData = directionFunc["inspect"]()
+	if success and blockData and blockData.name == "minecraft:lava" then
+		log.trace("Refuelling turtle with lava, using bucket from slot " .. bucketSlot)
+		turtle.select(bucketSlot)
+		directionFunc["place"]()
+		if turtle.refuel() == false then
+			log.trace("Refuelling failed, bucket didn't pick any lava " .. bucketSlot)
+			directionFunc["place"]()
+		end
+	end
 end
 
 function checkForBucket()
@@ -50,7 +85,7 @@ function checkForBucket()
 			break
 		else
 			print("Please give me a bucket so I can refuel using lava found along the way!")
-			print("press [ENTER] to disable refueling")
+			print("press [ENTER] to disable refuelling")
 
 			repeat
 				local event, param1 = os.pullEvent()
