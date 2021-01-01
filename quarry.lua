@@ -111,7 +111,7 @@ local function checkInventory(directionFunc)
 	end
 
 	log.trace("There are " .. 16 - fullSlots .. " free spaces")
-	if fullSlots > 3 then
+	if fullSlots > 14 then
 		emptyInventory(directionFunc)
 	end
 end
