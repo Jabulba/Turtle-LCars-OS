@@ -5,10 +5,9 @@
 -- integer  length
 -- integer  height
 -- string[] ignoredBlocks
+-- string[] enderChests
 -- integer  enderChestSlot
 -- boolean  hasEnderChest
--- integer  bucketSlot
--- boolean  hasBucket
 
 os.loadAPI("log.lua")
 os.loadAPI("fuel.lua")
@@ -24,10 +23,12 @@ local function emptyInventory(directionFunc)
 	directionFunc = directionFunc or directionMapping["forward"]
 
 	if hasEnderChest then
+		log.trace("Using Ender Chest to clear inventory")
 		while directionFunc["detect"]() do
 			local success, err = directionFunc["dig"]()
 			if not success and err == "Unbreakable block detected" then
 				-- TODO: backtrack?
+				log.error("Failed to place Ender Chest: " .. err)
 				error(err)
 			end
 			os.sleep(0.2)
@@ -35,6 +36,7 @@ local function emptyInventory(directionFunc)
 
 		turtle.select(enderChestSlot)
 		while not directionFunc["place"]() do
+			log.trace("Failed to place Ender Chest, trying again...")
 			turtle.attackUp()
 			turtle.attack()
 			turtle.attackDown()
@@ -42,44 +44,74 @@ local function emptyInventory(directionFunc)
 		end
 
 		do
-			local success, err = directionFunc["inspect"]()
-			if not success then
-				print("Error: I placed the EnderChest but it's not there!")
+			log.trace("Verifying Ender Chest placement...")
+			local success, blockData = directionFunc["inspect"]()
+			if success then
+				if blockData and enderChests[blockData.name] then
+					log.trace("Ender Chest placement confirmed!")
+				else
+					log.error("Ender Chest placed but '" .. blockData.name .. "' found instead")
+					checkForEnderChest()
+					return
+				end
+			else
+				log.error("Error: EnderChest placed but no blocks is there!")
 				checkForEnderChest()
 				return
 			end
 		end
 
-		for i = 1, 16, 1 do
-			local itemData = turtle.getItemDetail(i)
-			if itemData ~= nil and i ~= fuel.bucketSlot then
-				turtle.select(i)
-				directionFunc["drop"]()
+		for slot = 1, 16, 1 do
+			local itemData = turtle.getItemDetail(slot)
+			if itemData ~= nil then
+				if slot == fuel.getBucketSlot() then
+					log.trace("Skipping bucket slot " .. slot)
+				else
+					log.trace("Clearing " .. itemData.name .. " from slot " .. slot)
+					turtle.select(slot)
+					directionFunc["drop"]()
+				end
+			else
+				log.trace("Skipping empty slot " .. slot)
 			end
 		end
 
+		log.trace("Recovering Ender Chest")
 		turtle.select(enderChestSlot)
 		repeat
 			local success, err = directionFunc["dig"]()
 			if not success then
 				if err == "Nothing to dig here" then
-					print("Failed to pickup EnderChest! Has it been stolen?")
+					log.error("Failed to pickup EnderChest! Has it been stolen?")
 					checkForEnderChest()
 				else
-					print("Failed to pickup EnderChest, trying again!")
+					log.trace("Failed to pickup EnderChest, trying again!")
+				end
+			else
+				local itemData = turtle.getItemDetail(enderChestSlot)
+				if itemData and enderChests[itemData.name] then
+					log.trace("Ender Chest recovered")
+				else
+					log.error("Picked something other than the Ender Chest! Checking other slots...")
+					checkForEnderChest()
 				end
 			end
 		until success
+	else
+		log.error("The Ender Chest is gone!")
+		error("The Ender Chest is gone!")
 	end
 end
 
 local function checkInventory(directionFunc)
+	log.trace("Checking inventory space")
 	local fullSlots = 0
 	for i = 1, 16, 1 do
 		fullSlots = fullSlots + boolToInt[turtle.getItemCount(i) > 0]
 	end
 
-	if fullSlots > 14 then
+	log.trace("There are " .. 16 - fullSlots .. " free spaces")
+	if fullSlots > 3 then
 		emptyInventory(directionFunc)
 	end
 end
@@ -164,7 +196,7 @@ end
 
 function loadEnderChestsList()
 	log.info("Loading Ender Chest IDs")
-	local enderChests = {}
+	enderChests = {}
 	if not fs.exists("quarry.enderchests") then
 		log.info("quarry.enderchests not found, creating a new one with default IDs. You can add more IDs to this file, one ID per line!")
 		local enderChestsFile = fs.open("quarry.enderchests", "w")
@@ -339,7 +371,7 @@ function moveDown()
 end
 
 function moveForward(increaseWidth)
-	checkLava(directionMapping["forward"])
+	fuel.bucketRefuel(directionMapping["forward"])
 	action = "moveForward"
 	updateRunData()
 	while not turtle.forward() do
@@ -437,21 +469,6 @@ function checkChest(directionFunc)
 	end
 end
 
-function checkLava(directionFunc)
-	if not fuel.hasBucket or not fuel.fuelRequired or fuel.getFuelLevel() + 1000 >= fuelLimit then
-		return
-	end
-
-	local success, blockData = directionFunc["inspect"]()
-	if success and blockData and blockData.name == "minecraft:lava" then
-		turtle.select(fuel.bucketSlot)
-		directionFunc["place"]()
-		if turtle.refuel() == false then
-			directionFunc["place"]()
-		end
-	end
-end
-
 function checkTurtle(directionFunc)
 	local unlocked = false
 	repeat
@@ -468,7 +485,7 @@ function dig(directionFunc, force)
 	if force or shouldMineBlock(directionFunc) then
 		checkTurtle(directionFunc)
 		checkChest(directionFunc)
-		checkLava(directionFunc)
+		fuel.bucketRefuel(directionFunc)
 		directionFunc["dig"]()
 		checkInventory()
 	end
@@ -582,7 +599,6 @@ function startup()
 	emptyInventory(directionMapping["up"])
 end
 
-log.setLevel(log.LogLevel.TRACE)
 log.setLevel(log.LogLevel.INFO)
 
 args = { ... }
