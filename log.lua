@@ -40,6 +40,7 @@ function logIO(message, logLevel, printStackTrace)
 		openLog(logPrefix)
 	end
 
+	message = tostring(message)
 	print(message)
 	local callerName = debug.getinfo(3, "n").name
 	local callerLine = debug.getinfo(3, 'l').currentline
