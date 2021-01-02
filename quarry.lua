@@ -584,7 +584,11 @@ function startup()
 
 	checkForEnderChest()
 	fuel.checkForBucket()
-	loadIgnoredBlocks()
+	if args[3] then
+		ignoredBlocks = {}
+	else
+		loadIgnoredBlocks()
+	end
 	loadPerimeter(args)
 
 
